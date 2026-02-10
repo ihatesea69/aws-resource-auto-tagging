@@ -1,4 +1,4 @@
-<p align="center">
+﻿<p align="center">
   <img src="docs/assets/logo.svg" alt="AutoTag" width="120" />
 </p>
 
@@ -9,21 +9,21 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/ihatesea69/aws-autotag/actions"><img src="https://img.shields.io/github/actions/workflow/status/ihatesea69/aws-autotag/ci.yml?branch=main&style=flat-square&logo=github" alt="CI"></a>
+  <a href="https://github.com/ihatesea69/aws-resource-auto-tagging/actions"><img src="https://img.shields.io/github/actions/workflow/status/ihatesea69/aws-resource-auto-tagging/ci.yml?branch=main&style=flat-square&logo=github&label=CI" alt="CI"></a>
   <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square" alt="License"></a>
   <a href="https://www.python.org/downloads/"><img src="https://img.shields.io/badge/python-3.12+-3776AB.svg?style=flat-square&logo=python&logoColor=white" alt="Python"></a>
-  <a href="https://aws.amazon.com/cloudformation/"><img src="https://img.shields.io/badge/IaC-CloudFormation-FF9900.svg?style=flat-square&logo=amazonaws&logoColor=white" alt="CloudFormation"></a>
-  <a href="https://github.com/ihatesea69/aws-autotag/stargazers"><img src="https://img.shields.io/github/stars/ihatesea69/aws-autotag?style=flat-square&logo=github" alt="Stars"></a>
-  <a href="https://github.com/ihatesea69/aws-autotag/issues"><img src="https://img.shields.io/github/issues/ihatesea69/aws-autotag?style=flat-square" alt="Issues"></a>
+  <a href="https://aws.amazon.com/cloudformation/"><img src="https://img.shields.io/badge/IaC-CloudFormation-FF9900.svg?style=flat-square&logo=amazonwebservices&logoColor=white" alt="CloudFormation"></a>
+  <a href="https://github.com/ihatesea69/aws-resource-auto-tagging/stargazers"><img src="https://img.shields.io/github/stars/ihatesea69/aws-resource-auto-tagging?style=flat-square&logo=github" alt="Stars"></a>
+  <a href="https://github.com/ihatesea69/aws-resource-auto-tagging/issues"><img src="https://img.shields.io/github/issues/ihatesea69/aws-resource-auto-tagging?style=flat-square" alt="Issues"></a>
 </p>
 
 <p align="center">
-  <a href="#-quick-start">Quick Start</a> •
-  <a href="#-architecture">Architecture</a> •
-  <a href="#-supported-services">Supported Services</a> •
-  <a href="#-deployment">Deployment</a> •
-  <a href="#-configuration">Configuration</a> •
-  <a href="#-contributing">Contributing</a>
+  <a href="#quick-start">Quick Start</a> &bull;
+  <a href="#architecture">Architecture</a> &bull;
+  <a href="#supported-services">Supported Services</a> &bull;
+  <a href="#deployment">Deployment</a> &bull;
+  <a href="#configuration">Configuration</a> &bull;
+  <a href="#contributing">Contributing</a>
 </p>
 
 ---
@@ -34,8 +34,7 @@ AWS resources created without tags become invisible to cost allocation, security
 
 ## The Solution
 
-**AutoTag** is a zero-touch, event-driven tagging system. It listens for resource creation events via CloudTrail + EventBridge and automatically applies a standard tag set — including the creator's identity — within seconds of resource creation. Deploy once per region, forget about it.
-
+**AutoTag** is a zero-touch, event-driven tagging system. It listens for resource creation events via CloudTrail + EventBridge and automatically applies a standard tag set including the creator's identity within seconds of resource creation. Deploy once per region, forget about it.
 
 ### Tags Applied
 
@@ -50,30 +49,17 @@ AWS resources created without tags become invisible to cost allocation, security
 
 ---
 
-## 🏗 Architecture
+## Architecture
 
-```
-┌──────────────┐     ┌──────────────────┐     ┌───────────────────┐
-│  User creates │────▶│   CloudTrail     │────▶│   EventBridge     │
-│  AWS resource │     │   (write events) │     │   (25 event rules)│
-└──────────────┘     └──────────────────┘     └─────────┬─────────┘
-                                                        │
-                                                        ▼
-                                              ┌───────────────────┐
-                                              │  AutoTag Lambda   │
-                                              │                   │
-                                              │  1. Extract ID    │
-                                              │  2. Resolve owner │
-                                              │  3. Build tags    │
-                                              │  4. Apply tags    │
-                                              └───────────────────┘
-```
+<p align="center">
+  <img src="architecture.jpg" alt="AutoTag Architecture Diagram" width="800" />
+</p>
 
-**Single CloudFormation stack per region** — deploys CloudTrail trail, EventBridge rule, Lambda function, IAM role, and CloudWatch log group.
+**Single CloudFormation stack per region** deploys CloudTrail trail, EventBridge rule, Lambda function, IAM role, and CloudWatch log group.
 
 ---
 
-## 🎯 Supported Services
+## Supported Services
 
 <table>
 <tr><th>Service</th><th>Events</th><th>Resources Tagged</th></tr>
@@ -104,11 +90,11 @@ AWS resources created without tags become invisible to cost allocation, security
 <tr><td><strong>Step Functions</strong></td><td>CreateStateMachine</td><td>State Machine</td></tr>
 </table>
 
-> **25 events** across **13 AWS services** — covers the most commonly created resources.
+> **25 events** across **13 AWS services** covers the most commonly created resources.
 
 ---
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
 
@@ -131,7 +117,7 @@ This packages the Lambda, creates S3 code buckets, and deploys CloudFormation st
 
 ---
 
-## 📦 Deployment
+## Deployment
 
 ### Step-by-Step
 
@@ -169,7 +155,7 @@ done
 
 ---
 
-## ⚙ Configuration
+## Configuration
 
 | Parameter | Default | Description |
 |-----------|---------|-------------|
@@ -180,43 +166,43 @@ Pass these as `--parameter-overrides` during CloudFormation deploy.
 
 ---
 
-## 🧩 Project Structure
+## Project Structure
 
 ```
-aws-autotag/
-├── src/
-│   ├── lambda_function.py    # Lambda entry point
-│   ├── config.py             # Event → handler mapping
-│   ├── identity.py           # CloudTrail identity extraction
-│   ├── tag_builder.py        # Standard tag set construction
-│   ├── tag_serializer.py     # Tag format conversion per service
-│   ├── tag_printer.py        # Human-readable tag formatting
-│   ├── resource_extractors.py# Pure resource ID extraction
-│   ├── error_handler.py      # Decorator for error handling
-│   ├── retry.py              # Exponential backoff for throttling
-│   └── handlers/
-│       ├── ec2.py            # EC2 tagging (11 events)
-│       ├── s3.py             # S3 tagging (merge existing tags)
-│       ├── rds.py            # RDS tagging
-│       └── other_services.py # DynamoDB, Lambda, ELB, EFS, SNS, SQS, etc.
-├── tests/
-│   ├── test_identity.py
-│   ├── test_tag_builder.py
-│   ├── test_tag_serializer.py
-│   ├── test_tag_printer.py
-│   ├── test_resource_extraction.py
-│   └── test_error_handling.py
-├── template.yaml             # CloudFormation template
-├── deploy.sh                 # Bash deploy script
-├── deploy.ps1                # PowerShell deploy script
-└── requirements.txt
+aws-resource-auto-tagging/
+ src/
+    lambda_function.py    # Lambda entry point
+    config.py             # Event -> handler mapping
+    identity.py           # CloudTrail identity extraction
+    tag_builder.py        # Standard tag set construction
+    tag_serializer.py     # Tag format conversion per service
+    tag_printer.py        # Human-readable tag formatting
+    resource_extractors.py# Pure resource ID extraction
+    error_handler.py      # Decorator for error handling
+    retry.py              # Exponential backoff for throttling
+    handlers/
+        ec2.py            # EC2 tagging (11 events)
+        s3.py             # S3 tagging (merge existing tags)
+        rds.py            # RDS tagging
+        other_services.py # DynamoDB, Lambda, ELB, EFS, SNS, SQS, etc.
+ tests/
+    test_identity.py
+    test_tag_builder.py
+    test_tag_serializer.py
+    test_tag_printer.py
+    test_resource_extraction.py
+    test_error_handling.py
+ template.yaml             # CloudFormation template
+ deploy.sh                 # Bash deploy script
+ deploy.ps1                # PowerShell deploy script
+ requirements.txt
 ```
 
 ---
 
-## 🔧 Extending AutoTag
+## Extending AutoTag
 
-Adding a new service takes ~15 minutes:
+Adding a new service takes about 15 minutes:
 
 1. Add a handler function in `src/handlers/`
 2. Add a resource extractor in `src/resource_extractors.py`
@@ -229,7 +215,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for full details.
 
 ---
 
-## 🧪 Testing
+## Testing
 
 ```bash
 # Install test dependencies
@@ -246,19 +232,19 @@ Tests include unit tests and property-based tests (via Hypothesis) for identity 
 
 ---
 
-## 🔍 Troubleshooting
+## Troubleshooting
 
 | Symptom | Check |
 |---------|-------|
 | Tags not appearing | CloudWatch Logs at `/aws/lambda/AutoTagLambda-{Region}` |
 | EventBridge not firing | Verify rule is ENABLED in EventBridge console |
 | Permission denied | Lambda IAM role missing tagging permission for the service |
-| Throttling errors | Lambda retries 3× with exponential backoff (1s → 2s → 4s) |
+| Throttling errors | Lambda retries 3x with exponential backoff (1s, 2s, 4s) |
 | Stack deploy fails | Ensure S3 code bucket exists and contains `autotag-lambda.zip` |
 
 ---
 
-## 🧹 Cleanup
+## Cleanup
 
 ```bash
 for REGION in us-east-1 ap-southeast-1 ap-southeast-2; do
@@ -271,7 +257,7 @@ done
 
 ---
 
-## 🗺 Roadmap
+## Roadmap
 
 - [ ] Support for additional services (Kinesis, Redshift, CloudFront)
 - [ ] Slack/Teams notification on tagging events
@@ -281,24 +267,24 @@ done
 
 ---
 
-## 📄 License
+## License
 
 This project is licensed under the [MIT License](LICENSE).
 
 ---
 
-## 🤝 Contributing
+## Contributing
 
 Contributions are welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) and [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) before submitting a PR.
 
 ---
 
 <p align="center">
-  <a href="https://star-history.com/#ihatesea69/aws-autotag&Date">
-    <img src="https://api.star-history.com/svg?repos=ihatesea69/aws-autotag&type=Date&theme=dark" alt="Star History Chart" width="600" />
+  <a href="https://star-history.com/#ihatesea69/aws-resource-auto-tagging&Date">
+    <img src="https://api.star-history.com/svg?repos=ihatesea69/aws-resource-auto-tagging&type=Date&theme=dark" alt="Star History Chart" width="600" />
   </a>
 </p>
 
 <p align="center">
-  If AutoTag saves you time, consider giving it a ⭐
+  If AutoTag saves you time, consider giving it a star.
 </p>

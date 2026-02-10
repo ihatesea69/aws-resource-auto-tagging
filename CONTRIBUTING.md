@@ -1,4 +1,4 @@
-# Contributing to AutoTag
+﻿# Contributing to AutoTag
 
 Thanks for your interest in contributing! Here's how to get started.
 
@@ -6,8 +6,8 @@ Thanks for your interest in contributing! Here's how to get started.
 
 ```bash
 # Clone the repo
-git clone https://github.com/ihatesea69/aws-autotag.git
-cd aws-autotag
+git clone https://github.com/ihatesea69/aws-resource-auto-tagging.git
+cd aws-resource-auto-tagging
 
 # Create a virtual environment
 python -m venv .venv
