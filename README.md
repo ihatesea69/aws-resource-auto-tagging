@@ -257,6 +257,16 @@ done
 
 ---
 
+## Cost, Scale and Maintenance
+
+| Aspect | Details |
+|--------|---------|
+| Monthly Cost | Effectively **$0 for most accounts**. Lambda free tier covers 1M requests/month. EventBridge rules are free. First CloudTrail trail per region is free. Only marginal cost is S3 log storage (~$0.023/GB). Typical accounts spend under $1/month. |
+| Scalability | **Fully serverless** with no capacity planning. Lambda auto-scales to 1,000 concurrent executions (adjustable). EventBridge handles millions of events/day. Works identically for 10 or 10,000 resource creations per day. |
+| Maintenance | **Zero operational burden**. No servers, no patching, no cron jobs, no database, no state. All infrastructure is managed via CloudFormation. Adding a new service is one handler file + redeploy. No drift, no manual intervention. |
+
+---
+
 ## Roadmap
 
 - [ ] Support for additional services (Kinesis, Redshift, CloudFront)
