@@ -14,17 +14,14 @@ def build_tags(
         owner: The extracted owner name (from extract_owner).
         arn: The full ARN from the userIdentity field.
         event_time: The event time in ISO 8601 format.
-        environment: Environment name from CloudFormation parameter.
-        project: Project name from CloudFormation parameter.
+        environment: Environment name (unused, kept for interface compatibility).
+        project: Project name (unused, kept for interface compatibility).
 
     Returns:
-        A dict with the six standard tag keys.
+        A dict with the three standard tag keys.
     """
     return {
         "Owner": owner,
         "CreatedBy": arn,
         "CreationDate": event_time,
-        "Environment": environment,
-        "Project": project,
-        "AutoTagged": "true",
     }

@@ -2,8 +2,12 @@
 
 import logging
 import boto3
-from src.tag_serializer import serialize_arn_tags
-from src.error_handler import handle_tagging_errors
+try:
+    from tag_serializer import serialize_arn_tags
+    from error_handler import handle_tagging_errors
+except ImportError:
+    from src.tag_serializer import serialize_arn_tags
+    from src.error_handler import handle_tagging_errors
 
 logger = logging.getLogger(__name__)
 
