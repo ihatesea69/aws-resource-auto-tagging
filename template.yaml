@@ -1,0 +1,265 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  AutoTag System - Automatically tags newly created AWS resources with
+  creator identity, environment, and project metadata via CloudTrail,
+  EventBridge, and Lambda.
+
+Parameters:
+  EnvironmentName:
+    Type: String
+    Default: Development
+    Description: Environment name applied as a tag to all auto-tagged resources.
+  ProjectName:
+    Type: String
+    Default: CostTracking
+    Description: Project name applied as a tag to all auto-tagged resources.
+
+Resources:
+
+  # --- S3 Bucket for CloudTrail logs ---
+  AutoTagTrailBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "autotag-trail-logs-${AWS::AccountId}-${AWS::Region}"
+
+  AutoTagTrailBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref AutoTagTrailBucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AWSCloudTrailAclCheck
+            Effect: Allow
+            Principal:
+              Service: cloudtrail.amazonaws.com
+            Action: s3:GetBucketAcl
+            Resource: !GetAtt AutoTagTrailBucket.Arn
+          - Sid: AWSCloudTrailWrite
+            Effect: Allow
+            Principal:
+              Service: cloudtrail.amazonaws.com
+            Action: s3:PutObject
+            Resource: !Sub "${AutoTagTrailBucket.Arn}/AWSLogs/${AWS::AccountId}/*"
+            Condition:
+              StringEquals:
+                s3:x-amz-acl: bucket-owner-full-control
+
+  # --- CloudTrail Trail ---
+  AutoTagTrail:
+    Type: AWS::CloudTrail::Trail
+    DependsOn: AutoTagTrailBucketPolicy
+    Properties:
+      TrailName: !Sub "autotag-trail-${AWS::Region}"
+      IsLogging: true
+      IsMultiRegionTrail: false
+      S3BucketName: !Ref AutoTagTrailBucket
+      EnableLogFileValidation: true
+      EventSelectors:
+        - ReadWriteType: WriteOnly
+          IncludeManagementEvents: true
+
+  # --- CloudWatch Log Group ---
+  AutoTagLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/AutoTagLambda-${AWS::Region}"
+      RetentionInDays: 30
+
+  # --- Lambda Function ---
+  AutoTagLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub "AutoTagLambda-${AWS::Region}"
+      Runtime: python3.12
+      Handler: lambda_function.lambda_handler
+      Code:
+        S3Bucket: !Sub "autotag-code-${AWS::AccountId}-${AWS::Region}"
+        S3Key: autotag-lambda.zip
+      MemorySize: 256
+      Timeout: 120
+      Role: !GetAtt AutoTagLambdaRole.Arn
+      Environment:
+        Variables:
+          ENVIRONMENT: !Ref EnvironmentName
+          PROJECT: !Ref ProjectName
+
+  # --- Lambda Permission for EventBridge ---
+  AutoTagLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref AutoTagLambda
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt AutoTagEventRule.Arn
+
+  # --- EventBridge Rule ---
+  AutoTagEventRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: !Sub "AutoTagRule-${AWS::Region}"
+      Description: Routes resource creation CloudTrail events to AutoTag Lambda
+      State: ENABLED
+      EventPattern:
+        source:
+          - aws.ec2
+          - aws.s3
+          - aws.rds
+          - aws.dynamodb
+          - aws.lambda
+          - aws.elasticloadbalancing
+          - aws.elasticfilesystem
+          - aws.sns
+          - aws.sqs
+          - aws.secretsmanager
+          - aws.es
+          - aws.ecs
+          - aws.states
+        detail-type:
+          - "AWS API Call via CloudTrail"
+        detail:
+          eventSource:
+            - ec2.amazonaws.com
+            - s3.amazonaws.com
+            - rds.amazonaws.com
+            - dynamodb.amazonaws.com
+            - lambda.amazonaws.com
+            - elasticloadbalancing.amazonaws.com
+            - elasticfilesystem.amazonaws.com
+            - sns.amazonaws.com
+            - sqs.amazonaws.com
+            - secretsmanager.amazonaws.com
+            - es.amazonaws.com
+            - ecs.amazonaws.com
+            - states.amazonaws.com
+          eventName:
+            - RunInstances
+            - CreateSecurityGroup
+            - CreateImage
+            - CreateVolume
+            - CreateSnapshot
+            - AllocateAddress
+            - CreateNetworkInterface
+            - CreateVpc
+            - CreateSubnet
+            - CreateInternetGateway
+            - CreateNatGateway
+            - CreateBucket
+            - CreateDBInstance
+            - CreateDBCluster
+            - CreateTable
+            - CreateFunction20150331
+            - CreateLoadBalancer
+            - CreateTargetGroup
+            - CreateFileSystem
+            - CreateTopic
+            - CreateQueue
+            - CreateSecret
+            - CreateDomain
+            - CreateCluster
+            - CreateStateMachine
+      Targets:
+        - Id: AutoTagLambdaTarget
+          Arn: !GetAtt AutoTagLambda.Arn
+
+  # --- IAM Role for Lambda ---
+  AutoTagLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "AutoTagLambdaRole-${AWS::Region}"
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: AutoTagLambdaPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              # CloudWatch Logs
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/AutoTagLambda-${AWS::Region}:*"
+              # EC2 tagging
+              - Effect: Allow
+                Action:
+                  - ec2:CreateTags
+                Resource: "*"
+              # S3 tagging
+              - Effect: Allow
+                Action:
+                  - s3:PutBucketTagging
+                  - s3:GetBucketTagging
+                Resource: "*"
+              # RDS tagging
+              - Effect: Allow
+                Action:
+                  - rds:AddTagsToResource
+                Resource: "*"
+              # DynamoDB tagging
+              - Effect: Allow
+                Action:
+                  - dynamodb:TagResource
+                Resource: "*"
+              # Lambda tagging
+              - Effect: Allow
+                Action:
+                  - lambda:TagResource
+                Resource: "*"
+              # ELB tagging
+              - Effect: Allow
+                Action:
+                  - elasticloadbalancing:AddTags
+                Resource: "*"
+              # EFS tagging
+              - Effect: Allow
+                Action:
+                  - elasticfilesystem:TagResource
+                Resource: "*"
+              # SNS tagging
+              - Effect: Allow
+                Action:
+                  - sns:TagResource
+                Resource: "*"
+              # SQS tagging
+              - Effect: Allow
+                Action:
+                  - sqs:TagQueue
+                Resource: "*"
+              # Secrets Manager tagging
+              - Effect: Allow
+                Action:
+                  - secretsmanager:TagResource
+                Resource: "*"
+              # OpenSearch tagging
+              - Effect: Allow
+                Action:
+                  - es:AddTags
+                Resource: "*"
+              # ECS tagging
+              - Effect: Allow
+                Action:
+                  - ecs:TagResource
+                Resource: "*"
+              # Step Functions tagging
+              - Effect: Allow
+                Action:
+                  - states:TagResource
+                Resource: "*"
+
+Outputs:
+  LambdaFunctionArn:
+    Description: ARN of the AutoTag Lambda function
+    Value: !GetAtt AutoTagLambda.Arn
+  EventRuleArn:
+    Description: ARN of the EventBridge rule
+    Value: !GetAtt AutoTagEventRule.Arn
+  TrailArn:
+    Description: ARN of the CloudTrail trail
+    Value: !GetAtt AutoTagTrail.Arn

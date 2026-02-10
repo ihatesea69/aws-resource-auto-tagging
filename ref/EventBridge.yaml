@@ -1,0 +1,19 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: CloudFormation template for EventBridge RuleAutoTagRule
+Resources:
+  Rule8ec623e5:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: AutoTagRule
+      EventPattern: >-
+        {"source":["aws.ec2","aws.s3"],"detail-type":["AWS API Call via
+        CloudTrail"],"detail":{"eventSource":["ec2.amazonaws.com","s3.amazonaws.com"],"eventName":["RunInstances","CreateBucket"]}}
+      State: ENABLED
+      Description: Automatically tag new AWS resources based on creator identity
+      EventBusName: default
+      Targets:
+        - Id: Idd88d5b53-4816-460c-83b8-7a9967cd7a59
+          Arn:
+            Fn::Sub: >-
+              arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:AutoTagLambda
+Parameters: {}

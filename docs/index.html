@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AutoTag — Automatic AWS Resource Tagging</title>
+  <meta name="description" content="Zero-touch, event-driven tagging for every new AWS resource. Deploy once, never worry about untagged resources again.">
+  <meta property="og:title" content="AutoTag — Automatic AWS Resource Tagging">
+  <meta property="og:description" content="Zero-touch, event-driven tagging for every new AWS resource.">
+  <meta property="og:type" content="website">
+  <link rel="icon" href="assets/logo.svg" type="image/svg+xml">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --orange: #FF9900;
+      --orange-dark: #E88800;
+      --bg: #0a0a0f;
+      --bg-card: #12121a;
+      --bg-card-hover: #1a1a25;
+      --text: #e4e4e7;
+      --text-muted: #8b8b9e;
+      --border: #1e1e2e;
+      --glow: rgba(255, 153, 0, 0.15);
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Inter', -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      overflow-x: hidden;
+    }
+
+    /* Animated gradient background */
+    .bg-glow {
+      position: fixed;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      background: radial-gradient(circle at 30% 20%, rgba(255,153,0,0.06) 0%, transparent 50%),
+                  radial-gradient(circle at 70% 80%, rgba(255,102,0,0.04) 0%, transparent 50%);
+      pointer-events: none;
+      z-index: 0;
+      animation: drift 20s ease-in-out infinite alternate;
+    }
+
+    @keyframes drift {
+      0% { transform: translate(0, 0); }
+      100% { transform: translate(-5%, -3%); }
+    }
+
+    .container { max-width: 1100px; margin: 0 auto; padding: 0 24px; position: relative; z-index: 1; }
+
+    /* Nav */
+    nav {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 100;
+      padding: 16px 0;
+      background: rgba(10, 10, 15, 0.8);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border);
+    }
+
+    nav .container {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .nav-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 700;
+      font-size: 1.2rem;
+      color: var(--text);
+      text-decoration: none;
+    }
+
+    .nav-brand img { width: 32px; height: 32px; }
+
+    .nav-links { display: flex; gap: 32px; align-items: center; }
+
+    .nav-links a {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 0.9rem;
+      font-weight: 500;
+      transition: color 0.2s;
+    }
+
+    .nav-links a:hover { color: var(--text); }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 0.9rem;
+      text-decoration: none;
+      transition: all 0.2s;
+      border: none;
+      cursor: pointer;
+    }
+
+    .btn-primary {
+      background: var(--orange);
+      color: #000;
+    }
+
+    .btn-primary:hover {
+      background: var(--orange-dark);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 20px rgba(255, 153, 0, 0.3);
+    }
+
+    .btn-ghost {
+      background: transparent;
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+
+    .btn-ghost:hover {
+      border-color: var(--text-muted);
+      background: var(--bg-card);
+    }
+
+    /* Hero */
+    .hero {
+      padding: 160px 0 100px;
+      text-align: center;
+    }
+
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 16px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 100px;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin-bottom: 32px;
+    }
+
+    .hero-badge span { color: var(--orange); font-weight: 600; }
+
+    .hero h1 {
+      font-size: clamp(2.5rem, 6vw, 4.5rem);
+      font-weight: 800;
+      line-height: 1.1;
+      letter-spacing: -0.03em;
+      margin-bottom: 24px;
+    }
+
+    .hero h1 .gradient {
+      background: linear-gradient(135deg, var(--orange), #ff6b00);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .hero p {
+      font-size: 1.2rem;
+      color: var(--text-muted);
+      max-width: 600px;
+      margin: 0 auto 40px;
+      line-height: 1.7;
+    }
+
+    .hero-actions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+
+    /* Code block */
+    .code-block {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px 28px;
+      margin: 60px auto 0;
+      max-width: 600px;
+      text-align: left;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .code-block::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--orange), transparent);
+      opacity: 0.5;
+    }
+
+    .code-block .comment { color: #5a5a7a; }
+    .code-block .cmd { color: var(--orange); }
+    .code-block .flag { color: #7aa2f7; }
+
+    /* Stats */
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1px;
+      background: var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      margin: 80px 0;
+    }
+
+    .stat {
+      background: var(--bg-card);
+      padding: 32px 24px;
+      text-align: center;
+    }
+
+    .stat-number {
+      font-size: 2.5rem;
+      font-weight: 800;
+      color: var(--orange);
+      line-height: 1;
+      margin-bottom: 8px;
+    }
+
+    .stat-label {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+
+    /* Features */
+    .section { padding: 80px 0; }
+
+    .section-header {
+      text-align: center;
+      margin-bottom: 60px;
+    }
+
+    .section-header h2 {
+      font-size: 2.2rem;
+      font-weight: 700;
+      margin-bottom: 16px;
+      letter-spacing: -0.02em;
+    }
+
+    .section-header p {
+      color: var(--text-muted);
+      font-size: 1.1rem;
+      max-width: 500px;
+      margin: 0 auto;
+    }
+
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+    }
+
+    .feature-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 32px 28px;
+      transition: all 0.3s;
+    }
+
+    .feature-card:hover {
+      background: var(--bg-card-hover);
+      border-color: rgba(255, 153, 0, 0.2);
+      transform: translateY(-2px);
+    }
+
+    .feature-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 10px;
+      background: var(--glow);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.3rem;
+      margin-bottom: 20px;
+    }
+
+    .feature-card h3 {
+      font-size: 1.05rem;
+      font-weight: 600;
+      margin-bottom: 10px;
+    }
+
+    .feature-card p {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      line-height: 1.6;
+    }
+
+    /* Architecture */
+    .arch-visual {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 48px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .arch-visual::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, var(--orange), transparent);
+      opacity: 0.4;
+    }
+
+    .arch-flow {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+
+    .arch-node {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px 24px;
+      text-align: center;
+      min-width: 160px;
+      transition: all 0.3s;
+    }
+
+    .arch-node:hover {
+      border-color: var(--orange);
+      box-shadow: 0 0 20px rgba(255, 153, 0, 0.1);
+    }
+
+    .arch-node .icon { font-size: 1.5rem; margin-bottom: 8px; }
+    .arch-node .label { font-weight: 600; font-size: 0.9rem; }
+    .arch-node .sub { color: var(--text-muted); font-size: 0.75rem; margin-top: 4px; }
+
+    .arch-arrow {
+      color: var(--orange);
+      font-size: 1.5rem;
+      opacity: 0.6;
+    }
+
+    /* Services grid */
+    .services-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      gap: 12px;
+    }
+
+    .service-chip {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px;
+      text-align: center;
+      font-size: 0.85rem;
+      font-weight: 500;
+      transition: all 0.2s;
+    }
+
+    .service-chip:hover {
+      border-color: var(--orange);
+      background: var(--bg-card-hover);
+    }
+
+    .service-chip .count {
+      display: block;
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+
+    /* CTA */
+    .cta {
+      text-align: center;
+      padding: 100px 0;
+    }
+
+    .cta h2 {
+      font-size: 2.5rem;
+      font-weight: 800;
+      margin-bottom: 16px;
+      letter-spacing: -0.02em;
+    }
+
+    .cta p {
+      color: var(--text-muted);
+      font-size: 1.1rem;
+      margin-bottom: 32px;
+    }
+
+    /* Footer */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 40px 0;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 0.85rem;
+    }
+
+    footer a { color: var(--orange); text-decoration: none; }
+    footer a:hover { text-decoration: underline; }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .stats { grid-template-columns: repeat(2, 1fr); }
+      .features-grid { grid-template-columns: 1fr; }
+      .arch-flow { flex-direction: column; }
+      .arch-arrow { transform: rotate(90deg); }
+      .nav-links { gap: 16px; }
+      .nav-links a:not(.btn) { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="bg-glow"></div>
+
+  <nav>
+    <div class="container">
+      <a href="#" class="nav-brand">
+        <img src="assets/logo.svg" alt="AutoTag">
+        AutoTag
+      </a>
+      <div class="nav-links">
+        <a href="#features">Features</a>
+        <a href="#architecture">Architecture</a>
+        <a href="#services">Services</a>
+        <a href="https://github.com/ihatesea69/aws-autotag" class="btn btn-ghost">
+          ⭐ GitHub
+        </a>
+      </div>
+    </div>
+  </nav>
+
+  <section class="hero">
+    <div class="container">
+      <div class="hero-badge">
+        <span>●</span> Open Source &nbsp;·&nbsp; 25 Events &nbsp;·&nbsp; 13 Services
+      </div>
+      <h1>
+        Stop chasing<br><span class="gradient">untagged resources.</span>
+      </h1>
+      <p>
+        AutoTag automatically applies owner, environment, and project tags to every new AWS resource — seconds after creation. Deploy once, forget forever.
+      </p>
+      <div class="hero-actions">
+        <a href="https://github.com/ihatesea69/aws-autotag" class="btn btn-primary">
+          Get Started →
+        </a>
+        <a href="https://github.com/ihatesea69/aws-autotag" class="btn btn-ghost">
+          View on GitHub
+        </a>
+      </div>
+
+      <div class="code-block">
+        <span class="comment"># Deploy to all regions in one command</span><br>
+        <span class="cmd">./deploy.sh</span> <span class="flag">Production</span> <span class="flag">MyProject</span><br><br>
+        <span class="comment"># That's it. Every new resource gets tagged automatically.</span>
+      </div>
+    </div>
+  </section>
+
+  <div class="container">
+    <div class="stats">
+      <div class="stat">
+        <div class="stat-number">25</div>
+        <div class="stat-label">Events Tracked</div>
+      </div>
+      <div class="stat">
+        <div class="stat-number">13</div>
+        <div class="stat-label">AWS Services</div>
+      </div>
+      <div class="stat">
+        <div class="stat-number">6</div>
+        <div class="stat-label">Tags Applied</div>
+      </div>
+      <div class="stat">
+        <div class="stat-number">&lt;5s</div>
+        <div class="stat-label">Tagging Latency</div>
+      </div>
+    </div>
+  </div>
+
+  <section id="features" class="section">
+    <div class="container">
+      <div class="section-header">
+        <h2>Why AutoTag?</h2>
+        <p>Built for teams that care about cost visibility and operational hygiene.</p>
+      </div>
+      <div class="features-grid">
+        <div class="feature-card">
+          <div class="feature-icon">🔍</div>
+          <h3>Identity Resolution</h3>
+          <p>Resolves IAM users, assumed roles, root, and federated users to a human-readable owner name.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">⚡</div>
+          <h3>Event-Driven</h3>
+          <p>CloudTrail → EventBridge → Lambda pipeline. No polling, no agents, no cron jobs.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">🛡️</div>
+          <h3>Error Resilient</h3>
+          <p>Exponential backoff on throttling, graceful error handling, isolated per-event processing.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">📦</div>
+          <h3>Single Stack</h3>
+          <p>One CloudFormation template deploys everything — trail, rules, Lambda, IAM, and logs.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">🔌</div>
+          <h3>Extensible</h3>
+          <p>Add a new service in ~15 minutes. Handler, extractor, config entry, IAM permission. Done.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">🧪</div>
+          <h3>Well Tested</h3>
+          <p>Unit tests + property-based tests with Hypothesis. Pure extractors are tested in isolation.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="architecture" class="section">
+    <div class="container">
+      <div class="section-header">
+        <h2>How It Works</h2>
+        <p>A fully serverless pipeline from event to tag.</p>
+      </div>
+      <div class="arch-visual">
+        <div class="arch-flow">
+          <div class="arch-node">
+            <div class="icon">👤</div>
+            <div class="label">User Action</div>
+            <div class="sub">Creates AWS resource</div>
+          </div>
+          <div class="arch-arrow">→</div>
+          <div class="arch-node">
+            <div class="icon">📋</div>
+            <div class="label">CloudTrail</div>
+            <div class="sub">Captures API call</div>
+          </div>
+          <div class="arch-arrow">→</div>
+          <div class="arch-node">
+            <div class="icon">🔀</div>
+            <div class="label">EventBridge</div>
+            <div class="sub">Matches 25 patterns</div>
+          </div>
+          <div class="arch-arrow">→</div>
+          <div class="arch-node" style="border-color: var(--orange);">
+            <div class="icon">⚙️</div>
+            <div class="label">AutoTag Lambda</div>
+            <div class="sub">Tags the resource</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="services" class="section">
+    <div class="container">
+      <div class="section-header">
+        <h2>Supported Services</h2>
+        <p>Covers the most commonly created AWS resources.</p>
+      </div>
+      <div class="services-grid">
+        <div class="service-chip">EC2<span class="count">11 events</span></div>
+        <div class="service-chip">S3<span class="count">1 event</span></div>
+        <div class="service-chip">RDS<span class="count">2 events</span></div>
+        <div class="service-chip">DynamoDB<span class="count">1 event</span></div>
+        <div class="service-chip">Lambda<span class="count">1 event</span></div>
+        <div class="service-chip">ELB<span class="count">2 events</span></div>
+        <div class="service-chip">EFS<span class="count">1 event</span></div>
+        <div class="service-chip">SNS<span class="count">1 event</span></div>
+        <div class="service-chip">SQS<span class="count">1 event</span></div>
+        <div class="service-chip">Secrets Mgr<span class="count">1 event</span></div>
+        <div class="service-chip">OpenSearch<span class="count">1 event</span></div>
+        <div class="service-chip">ECS<span class="count">1 event</span></div>
+        <div class="service-chip">Step Functions<span class="count">1 event</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="cta">
+    <div class="container">
+      <h2>Ready to tag everything?</h2>
+      <p>Deploy in under 5 minutes. Open source, MIT licensed.</p>
+      <div class="hero-actions">
+        <a href="https://github.com/ihatesea69/aws-autotag" class="btn btn-primary">
+          ⭐ Star on GitHub
+        </a>
+        <a href="https://github.com/ihatesea69/aws-autotag#-quick-start" class="btn btn-ghost">
+          Read the Docs
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <div class="container">
+      <p>
+        Built with ☕ for the AWS community &nbsp;·&nbsp;
+        <a href="https://github.com/ihatesea69/aws-autotag">GitHub</a> &nbsp;·&nbsp;
+        <a href="https://github.com/ihatesea69/aws-autotag/blob/main/LICENSE">MIT License</a>
+      </p>
+    </div>
+  </footer>
+</body>
+</html>

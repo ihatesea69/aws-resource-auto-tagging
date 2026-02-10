@@ -1,0 +1,19 @@
+[project]
+name = "aws-autotag"
+version = "1.0.0"
+description = "Automatically tag newly created AWS resources with creator identity and metadata"
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.12"
+dependencies = ["boto3"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 120
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I"]
